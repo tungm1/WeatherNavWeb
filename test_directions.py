@@ -1,4 +1,6 @@
 import requests
+import polyline # may need pip install polyline
+import math
 
 # Replace this with your actual API key
 API_KEY = ""
@@ -23,10 +25,20 @@ coordinates = []
 places = []
 weatherOfPlace = []
 
-## TODO: decoding routePolyline
+def assignment(points, totalTime):
+    num_points = len(coordinates)
+    points_per_second = num_points / totalTime
+    points_per_hour = points_per_second * 3600
+    points_per_hour = math.floor(points_per_hour)
+    reducedPoints = []
+    for i in range(0, len(points), points_per_hour):
+        reducedPoints.append(points[i])
+    return reducedPoints
+
 # Returns a list of coordinates that are x number of hours apart
-def decodePolyline(polyline):
-    return None
+def decodePolyline(polyline_str, totalTime):
+    points = polyline.decode(polyline_str)
+    return assignment(points, totalTime)
 
 def reverseGeocoding(coordinate):
     return None
@@ -50,13 +62,13 @@ if data['status'] == 'OK':
     #     print(f"- {instruction_clean} ({step['distance']['text']})")
 
     routePolyline = routePolyline = data['routes'][0]['overview_polyline']['points'] # Should be "points" in "overview_polyline"
+    total_duration_seconds = data['routes'][0]['legs'][0]['duration']['value']
 
-    coordinates = decodePolyline(routePolyline)
+    coordinates = decodePolyline(routePolyline, total_duration_seconds)
 
-    for coordinate in coordinates:
-        time = 1 # We are assuming that each coordinate is another hour gone by
-        places.append([reverseGeocoding(coordinate), time])
-        time = time + 1
+    for i, coordinate in enumerate(coordinates):
+        places.append([reverseGeocoding(coordinate), i])  # i will be the hour count
+
     
     for place in places:
         weatherOfPlace.append(weatherAPICall(place[0], place[1]))
