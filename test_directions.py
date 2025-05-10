@@ -21,9 +21,10 @@ params = {
 response = requests.get(url, params=params)
 data = response.json()
 
-coordinates = []
-places = []
-weatherOfPlace = []
+coordinates = [] # Every coordinate in coordinates is in one hour intervals along the route
+cachedCities = {} # cachedCities checks to see that don't need to call the Google APIs again
+places = [] # places is the physical locations of all items in coordinates
+weatherOfPlace = [] # weatherOfPlace stores the weather for each place
 
 def assignment(points, totalTime):
     num_points = len(coordinates)
@@ -79,16 +80,21 @@ if data['status'] == 'OK':
     #     instruction = step['html_instructions']
     #     instruction_clean = instruction.replace('<b>', '').replace('</b>', '').replace('<div style="font-size:0.9em">', ' ').replace('</div>', '')
     #     print(f"- {instruction_clean} ({step['distance']['text']})")
-
-    routePolyline = data['routes'][0]['overview_polyline']['points'] # Should be "points" in "overview_polyline"
-    total_duration_seconds = data['routes'][0]['legs'][0]['duration']['value']
-
-    coordinates = decodePolyline(routePolyline, total_duration_seconds)
-
-    for i, coordinate in enumerate(coordinates):
-        places.append([reverseGeocoding(coordinate), i])
-
+    route = data['routes'][0]['legs'][0]
+    startEndCity = route['start_address'] + " " + route['end_address']
+    if startEndCity in cachedCities:
+        places = cachedCities[startEndCity]
+    else:
+        routePolyline = data['routes'][0]['overview_polyline']['points'] # Should be "points" in "overview_polyline"
+        total_duration_seconds = route['duration']['value']
     
+        coordinates = decodePolyline(routePolyline, total_duration_seconds)
+    
+        for i, coordinate in enumerate(coordinates):
+            places.append([reverseGeocoding(coordinate), i])
+        
+        cachedCities[startEndCity] = places
+
     for place in places:
         weatherOfPlace.append(weatherAPICall(place[0], place[1]))
 
