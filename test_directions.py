@@ -41,7 +41,18 @@ def decodePolyline(polyline_str, totalTime):
     return assignment(points, totalTime)
 
 def reverseGeocoding(coordinate):
-    return None
+    # Build the request URL
+    url = "https://maps.googleapis.com/maps/api/geocode/json"
+    params = {
+        "latlng": f"{coordinate[0]},{coordinate[1]}",
+        "key": API_KEY,
+        "result_type": "sublocality"
+    }
+
+    # Send the request
+    response = requests.get(url, params=params)
+    data = response.json()
+    return data["results"]["address_components"]["long_name"]
 
 def weatherAPICall(place, time):
     return None
@@ -67,7 +78,7 @@ if data['status'] == 'OK':
     coordinates = decodePolyline(routePolyline, total_duration_seconds)
 
     for i, coordinate in enumerate(coordinates):
-        places.append([reverseGeocoding(coordinate), i])  # i will be the hour count
+        places.append([reverseGeocoding(coordinate), i])
 
     
     for place in places:
