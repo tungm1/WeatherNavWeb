@@ -52,7 +52,15 @@ def reverseGeocoding(coordinate):
     # Send the request
     response = requests.get(url, params=params)
     data = response.json()
-    return data["results"]["address_components"]["long_name"]
+
+    if data['status'] != 'OK' or not data['results']:
+        return "Unknown location"
+
+    for component in data["results"][0]["address_components"]:
+        if "locality" in component["types"] or "administrative_area_level_2" in component["types"]:
+            return component["long_name"]
+    
+    return data["results"][0]["formatted_address"]
 
 def weatherAPICall(place, time):
     return None
@@ -72,7 +80,7 @@ if data['status'] == 'OK':
     #     instruction_clean = instruction.replace('<b>', '').replace('</b>', '').replace('<div style="font-size:0.9em">', ' ').replace('</div>', '')
     #     print(f"- {instruction_clean} ({step['distance']['text']})")
 
-    routePolyline = routePolyline = data['routes'][0]['overview_polyline']['points'] # Should be "points" in "overview_polyline"
+    routePolyline = data['routes'][0]['overview_polyline']['points'] # Should be "points" in "overview_polyline"
     total_duration_seconds = data['routes'][0]['legs'][0]['duration']['value']
 
     coordinates = decodePolyline(routePolyline, total_duration_seconds)
