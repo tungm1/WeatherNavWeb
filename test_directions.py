@@ -1,5 +1,5 @@
 import requests
-import polyline # may need pip install polyline
+import polyline 
 import math
 
 # Replace this with your actual API key
@@ -26,7 +26,8 @@ places = []
 weatherOfPlace = []
 
 def assignment(points, totalTime):
-    num_points = len(coordinates)
+    num_points = len(points)
+    print(num_points)
     points_per_second = num_points / totalTime
     points_per_hour = points_per_second * 3600
     points_per_hour = math.floor(points_per_hour)
@@ -46,33 +47,27 @@ def reverseGeocoding(coordinate):
     params = {
         "latlng": f"{coordinate[0]},{coordinate[1]}",
         "key": API_KEY,
-        "result_type": "sublocality"
     }
 
     # Send the request
     response = requests.get(url, params=params)
     data = response.json()
-    return data["results"]["address_components"]["long_name"]
+
+    if data['status'] != 'OK' or not data['results']:
+        return "Unknown location"
+
+    for component in data["results"][0]["address_components"]:
+        if "locality" in component["types"] or "administrative_area_level_2" in component["types"]:
+            return component["long_name"]
+
+    return data["results"][0]["formatted_address"]
 
 def weatherAPICall(place, time):
     return None
 
 # Check if the response is OK
 if data['status'] == 'OK':
-    # route = data['routes'][0]['legs'][0]
-    # print("Route Summary:")
-    # print(f"Start Address: {route['start_address']}")
-    # print(f"End Address: {route['end_address']}")
-    # print(f"Duration: {route['duration']['text']}")
-    # print(f"Distance: {route['distance']['text']}")
-    # print("\nStep-by-step directions:")
-
-    # for step in route['steps']:
-    #     instruction = step['html_instructions']
-    #     instruction_clean = instruction.replace('<b>', '').replace('</b>', '').replace('<div style="font-size:0.9em">', ' ').replace('</div>', '')
-    #     print(f"- {instruction_clean} ({step['distance']['text']})")
-
-    routePolyline = routePolyline = data['routes'][0]['overview_polyline']['points'] # Should be "points" in "overview_polyline"
+    routePolyline = data['routes'][0]['overview_polyline']['points']
     total_duration_seconds = data['routes'][0]['legs'][0]['duration']['value']
 
     coordinates = decodePolyline(routePolyline, total_duration_seconds)
@@ -80,11 +75,12 @@ if data['status'] == 'OK':
     for i, coordinate in enumerate(coordinates):
         places.append([reverseGeocoding(coordinate), i])
 
-    
+    ## Uncomment line 80 and 84, and comment out 81 when working on weather portion
     for place in places:
-        weatherOfPlace.append(weatherAPICall(place[0], place[1]))
+        #weatherOfPlace.append(weatherAPICall(place[0], place[1]))
+        print(place)
 
-    for item in weatherOfPlace:
-        print(item)
+    #for item in weatherOfPlace:
+    #    print(item)
 else:
     print(f"Error with API request: {data['status']}")
