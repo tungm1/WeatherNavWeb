@@ -2,12 +2,14 @@ from flask import Flask, request, render_template
 import requests
 import polyline  # may need pip install polyline
 import math
+from datetime import datetime, timedelta
+
 
 app = Flask(__name__)
 
 # Replace this with your actual API key
-API_KEY = "AIzaSyA04jUJc3adR32G_iZ17GYYkEObdOcYb1s"
-
+NAV_API_KEY = ""
+WEATHER_API_KEY = ""
 coordinates = []       # Every coordinate in coordinates is in one hour intervals along the route
 places = []            # places is the physical locations of all items in coordinates
 weatherOfPlace = []    # weatherOfPlace stores the weather for each place
@@ -35,7 +37,7 @@ def reverseGeocoding(coordinate):
     url = "https://maps.googleapis.com/maps/api/geocode/json"
     params = {
         "latlng": f"{coordinate[0]},{coordinate[1]}",
-        "key": API_KEY,
+        "key": NAV_API_KEY,
     }
 
     # Send the request
@@ -51,10 +53,46 @@ def reverseGeocoding(coordinate):
 
     return data["results"][0]["formatted_address"]
 
-def weatherAPICall(place, time):
-    # Placeholder: this function will be used to query weather at a given location and hour
-    # Your friend can plug in OpenWeatherMap (or similar) here
-    return None
+def weatherAPICall(coordinate, time, start_time_utc=None):
+    # Default to now if not passed in
+    if start_time_utc is None:
+        start_time_utc = datetime.utcnow()
+
+    # Target time = start of trip + N hours
+    target_time = start_time_utc + timedelta(hours=time)
+
+    url = "https://pro.openweathermap.org/data/2.5/forecast/hourly"
+    params = {
+        "lat": coordinate[0],
+        "lon": coordinate[1],
+        "appid": NAV_API_KEY,
+    }
+
+    response = requests.get(url, params=params)
+    data = response.json()
+
+    if "list" not in data:
+        return f"{coordinate}: No forecast data available"
+
+    # Find forecast closest to target_time
+    closest = None
+    min_diff = float('inf')
+
+    for forecast in data["list"]:
+        forecast_time = datetime.utcfromtimestamp(forecast["dt"])
+        diff = abs((forecast_time - target_time).total_seconds())
+        if diff < min_diff:
+            min_diff = diff
+            closest = forecast
+
+    if not closest:
+        return f"{coordinate}: No matching forecast found"
+
+    temp = closest["main"]["temp"]
+    desc = closest["weather"][0]["description"].capitalize()
+    forecast_time_str = closest["dt_txt"]
+
+    return f"{forecast_time_str}: {round(temp)}°F, {desc}"
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
@@ -68,7 +106,7 @@ def index():
         params = {
             "origin": start,
             "destination": end,
-            "key": API_KEY
+            "key": NAV_API_KEY
         }
 
         response = requests.get(url, params=params)
@@ -98,9 +136,8 @@ def index():
 
                 cachedCities[startEndCity] = places.copy()
 
-            for place in places:
-                #weatherOfPlace.append(weatherAPICall(place[0], place[1]))
-                print(place)
+            for i in range(len(coordinates)):
+                weatherAPICall(coordinates[i], i)
 
             #for item in weatherOfPlace:
             #    print(item)
