@@ -136,11 +136,12 @@ def index():
 
                 cachedCities[startEndCity] = places.copy()
 
-            for i in range(len(coordinates)):
-                weatherAPICall(coordinates[i], i)
+                start_time_utc = datetime.utcnow()
 
-            #for item in weatherOfPlace:
-            #    print(item)
+                for i in range(len(coordinates)):
+                    city, hour = places[i]
+                    forecast_str = weatherAPICall(coordinates[i], hour, start_time_utc)
+                    print(f"{city} (+{hour}h): {forecast_str}")
 
             return f"Processed {len(weatherOfPlace)} weather points. Check terminal output."
 
