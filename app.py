@@ -54,14 +54,13 @@ def reverseGeocoding(coordinate):
     return data["results"][0]["formatted_address"]
 
 def weatherAPICall(coordinate, time, start_time_utc=None):
-    # Default to now if not passed in
     if start_time_utc is None:
         start_time_utc = datetime.utcnow()
 
     # Target time = start of trip + N hours
-    target_time = start_time_utc + timedelta(hours=time)
+    target_time_utc = start_time_utc + timedelta(hours=time)
 
-    url = "https://pro.openweathermap.org/data/3.0/onecall"
+    url = "https://api.openweathermap.org/data/3.0/onecall"
     params = {
         "lat": coordinate[0],
         "lon": coordinate[1],
@@ -74,15 +73,17 @@ def weatherAPICall(coordinate, time, start_time_utc=None):
     data = response.json()
 
     if "hourly" not in data:
-        return f"{coordinate}: No forecast data available"
+        return f"{coordinate}: No hourly forecast data available"
 
-    # Find forecast closest to target_time
+    timezone_offset = data.get("timezone_offset", 0)  # seconds
+
+    # Find forecast closest to target_time_utc
     closest = None
     min_diff = float('inf')
 
     for forecast in data["hourly"]:
-        forecast_time = datetime.utcfromtimestamp(forecast["dt"])
-        diff = abs((forecast_time - target_time).total_seconds())
+        forecast_time_utc = datetime.utcfromtimestamp(forecast["dt"])
+        diff = abs((forecast_time_utc - target_time_utc).total_seconds())
         if diff < min_diff:
             min_diff = diff
             closest = forecast
@@ -92,12 +93,11 @@ def weatherAPICall(coordinate, time, start_time_utc=None):
 
     temp = closest["temp"]
     desc = closest["weather"][0]["description"].capitalize()
-    
-    # local_time_str = forecast_time.strftime("%-I %p")
-    # return f"{local_time_str}: {round(temp)}°F, {desc}"
 
-    arrival_time = start_time_utc + timedelta(hours=time)
-    arrival_str = arrival_time.strftime("%-I %p")  # e.g., "6 PM"
+    # Convert target_time_utc to local time using timezone_offset
+    arrival_time_local = target_time_utc + timedelta(seconds=timezone_offset)
+    arrival_str = arrival_time_local.strftime("%-I %p")  # e.g., "3 PM"
+
     return f"{arrival_str}: {round(temp)}°F, {desc}"
 
 @app.route('/', methods=['GET', 'POST'])
